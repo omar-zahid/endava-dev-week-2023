@@ -21,7 +21,7 @@ async function load(fileName: string): Promise<Uint8Array> {
 async function getTemplate(highRes = false): Promise<Uint8Array> {
   if (highRes) {
     if (!highResTemplate) {
-      highResTemplate = await load(`badge.pdf`);
+      highResTemplate = await load(`badge.png`);
     }
     return highResTemplate;
   }
