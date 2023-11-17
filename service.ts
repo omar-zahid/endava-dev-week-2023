@@ -1,4 +1,4 @@
-import { connect, JSONCodec, ServiceError } from "./natslib.ts";
+import { connect, JSONCodec, ServiceError } from "nats";
 import { generateBadge } from "./generator.ts";
 
 type Badge = {
@@ -7,19 +7,19 @@ type Badge = {
 };
 
 const jc = JSONCodec<Badge>();
-const nc = await connect({ servers: "demo.nats.io" });
+const nc = await connect();
 
 const service = await nc.services.add({
   name: "badge_generator",
   version: "0.0.1",
-  description: "Generates a RethinkConn badge",
+  description: "Generates Endava Dev Week badge",
 });
 
 service.addEndpoint("generate", {
   subject: "generate.badge",
   metadata: {
-    "request": "{ name: string, company?: string }",
-    "response": "Uint8Array",
+    request: "{ name: string, company?: string }",
+    response: "Uint8Array",
   },
   handler: (err, msg) => {
     if (err) {
@@ -30,7 +30,7 @@ service.addEndpoint("generate", {
     const req = jc.decode(msg.data);
     if (typeof req.name !== "string" || req.name.length === 0) {
       console.log(
-        `${service.info().name} is rejecting a request without a name`,
+        `${service.info().name} is rejecting a request without a name`
       );
       // you can report an error to the client
       msg.respondError(400, "name is required");
@@ -42,7 +42,7 @@ service.addEndpoint("generate", {
       })
       .catch((err) => {
         const sr = ServiceError.toServiceError(err);
-        msg.respondError(sr?.code, sr?.message);
+        msg.respondError(sr?.code || 500, sr?.message ?? "");
       });
   },
 });
@@ -58,6 +58,4 @@ service.stopped.then((err: Error | null) => {
   }
 });
 
-console.log(
-  `${si.name} ${si.version} started with ID: ${si.id}`,
-);
+console.log(`${si.name} ${si.version} started with ID: ${si.id}`);

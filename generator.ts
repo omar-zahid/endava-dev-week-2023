@@ -1,40 +1,37 @@
-import { grayscale, PDFDocument, rgb } from "npm:pdf-lib";
-import fontkit from "npm:@pdf-lib/fontkit";
+import { grayscale, PDFDocument, rgb } from "pdf-lib";
+import fontkit from "@pdf-lib/fontkit";
+
+import { promises as fs } from "fs";
+import path from "path";
 
 let highResTemplate: Uint8Array;
 let lowResTemplate: Uint8Array;
 
-const BASE_URL =
-  `https://raw.githubusercontent.com/aricart/services_demo/main/assets`;
-
-async function load(url: string): Promise<Uint8Array> {
-  const r = await fetch(url);
-  if (!r.ok) {
-    return Promise.reject(new Error(`error loading resource ${url}`));
+async function load(fileName: string): Promise<Uint8Array> {
+  try {
+    const filePath = path.join(import.meta.dir, "assets", fileName);
+    const data = await fs.readFile(filePath);
+    console.log(`loaded ${fileName}`);
+    return new Uint8Array(data);
+  } catch (err) {
+    return Promise.reject(new Error(`error loading resource ${fileName}`));
   }
-  const v = new Uint8Array(await r.arrayBuffer());
-  console.log(`loaded ${url}`);
-  return v;
 }
 
 async function getTemplate(highRes = false): Promise<Uint8Array> {
   if (highRes) {
     if (!highResTemplate) {
-      highResTemplate = await load(
-        `${BASE_URL}/badge.pdf`,
-      );
+      highResTemplate = await load(`badge.pdf`);
     }
     return highResTemplate;
   }
   if (!lowResTemplate) {
-    lowResTemplate = await load(
-      `${BASE_URL}/badge.png`,
-    );
+    lowResTemplate = await load(`badge.png`);
   }
   return lowResTemplate;
 }
 
-const fontBytes = await load(`${BASE_URL}/Inter-Bold.ttf`);
+const fontBytes = await load(`Inter-Bold.ttf`);
 await getTemplate();
 
 type Size = {
@@ -68,7 +65,7 @@ function union(...lines: TextInfo[]): Rectangle {
   const R = Object.assign({ x: 0, y: 0, width: 0, height: 0 });
   for (let i = lines.length - 1; i > -1; i--) {
     if (R.height > 0) {
-      R.height += lines[i].descenderHeight * .75;
+      R.height += lines[i].descenderHeight * 0.75;
     }
     R.width = Math.max(R.width, lines[i].size.width);
     R.height += lines[i].size.height;
@@ -86,18 +83,23 @@ function union(...lines: TextInfo[]): Rectangle {
 function fitLine(font: PDFFont, text: string, maxFontSize = 80): TextInfo {
   // text box lineBounds is 30,25,540,184
   const maxWidth = LabelRectangle.width - PADDING;
-  const maxHeight = (LabelRectangle.height - PADDING) * .80;
+  const maxHeight = (LabelRectangle.height - PADDING) * 0.8;
   for (let fontSize = maxFontSize; fontSize > 0; fontSize--) {
     const w = font.widthOfTextAtSize(text, fontSize);
-    const hasDescender = text.includes("q") || text.includes("y") ||
-      text.includes("p") || text.includes("f") || text.includes("g") ||
+    const hasDescender =
+      text.includes("q") ||
+      text.includes("y") ||
+      text.includes("p") ||
+      text.includes("f") ||
+      text.includes("g") ||
       text.includes("j");
     const fontHeight = font.sizeAtHeight(fontSize);
     const h = fontHeight;
     if (h > maxHeight) {
       continue;
     }
-    const descenderHeight = font.heightAtSize(fontSize, { descender: true }) -
+    const descenderHeight =
+      font.heightAtSize(fontSize, { descender: true }) -
       font.heightAtSize(fontSize, { descender: false });
     if (maxWidth >= w) {
       return {
@@ -125,18 +127,18 @@ function _debugRectangle(
   page: PDFPage,
   r: Rectangle,
   // @ts-ignore: page is a real object
-  color: RGB = rgb(1, 1, 1),
+  color: RGB = rgb(1, 1, 1)
 ) {
   const o = Object.assign(
     { borderColor: color, borderWidth: 1, opacity: 0 },
-    r,
+    r
   );
   page.drawRectangle(o);
 }
 
 export async function generateBadge(
   args: { name: string; company?: string },
-  highres = false,
+  highres = false
 ): Promise<Uint8Array> {
   const template = await getTemplate(highres);
   let doc;
@@ -159,9 +161,8 @@ export async function generateBadge(
   const name = fitLine(font, args.name);
   const lines = [name];
   // make the company name smaller
-  const maxFontSize = name.fontSize > 75
-    ? name.fontSize / 2
-    : name.fontSize - 10;
+  const maxFontSize =
+    name.fontSize > 75 ? name.fontSize / 2 : name.fontSize - 10;
   if (args.company?.length) {
     const company = fitLine(font, args.company!, maxFontSize);
     lines.push(company);
@@ -172,7 +173,7 @@ export async function generateBadge(
 
   // center the rectangle on the target area
   r.x = Math.floor((pageWidth - r.width) / 2);
-  r.y = ((LabelRectangle.height - r.height) / 2) + LabelRectangle.y;
+  r.y = (LabelRectangle.height - r.height) / 2 + LabelRectangle.y;
   // add some visual padding if we have a company line
   if (lines.length === 2) {
     r.y += lines[1].descenderHeight / 3;

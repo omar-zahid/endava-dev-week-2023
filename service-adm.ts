@@ -1,5 +1,5 @@
 import { cli, Command, Flags } from "https://deno.land/x/cobra@v0.0.9/mod.ts";
-import { connect, deferred, millis, NatsConnection } from "./natslib.ts";
+import { connect, deferred, millis, NatsConnection } from "nats";
 import { collect } from "https://raw.githubusercontent.com/nats-io/nats.deno/service-changes/nats-base-client/util.ts";
 
 const root = cli({
@@ -34,9 +34,7 @@ function createConnection(flags: Flags): Promise<NatsConnection> {
   return connect({ servers });
 }
 
-function options(
-  flags: Flags,
-): { name?: string; id?: string } {
+function options(flags: Flags): { name?: string; id?: string } {
   let name: string | undefined = flags.value<string>("name");
   if (name === "") {
     name = undefined;
@@ -51,11 +49,7 @@ function options(
 root.addCommand({
   use: "ping [--name] [--id]",
   short: "pings services",
-  run: async (
-    cmd: Command,
-    _args: string[],
-    flags: Flags,
-  ): Promise<number> => {
+  run: async (cmd: Command, _args: string[], flags: Flags): Promise<number> => {
     const nc = await createConnection(flags);
     const opts = options(flags);
     const mc = nc.services.client();
@@ -64,7 +58,7 @@ root.addCommand({
         const A = `${a.name} ${a.version}`;
         const B = `${b.name} ${b.version}`;
         return B.localeCompare(A);
-      },
+      }
     );
     if (infos.length) {
       console.table(infos);
@@ -79,33 +73,27 @@ root.addCommand({
 root.addCommand({
   use: "stats [--name] [--id]",
   short: "get service stats",
-  run: async (
-    cmd: Command,
-    _args: string[],
-    flags: Flags,
-  ): Promise<number> => {
+  run: async (cmd: Command, _args: string[], flags: Flags): Promise<number> => {
     const nc = await createConnection(flags);
     const mc = nc.services.client();
     const opts = options(flags);
     // stats are grouped by endpoint, if this is a multi-endpoint map this so that each
     // endpoint looks like a service
     const stats: { num_requests: number }[] = [];
-    (await collect(await mc.stats(opts.name, opts.id))).forEach(
-      (s) => {
-        const { name, id, version } = s;
-        s.endpoints?.forEach((ne) => {
-          const line = Object.assign(ne, {
-            name,
-            endpoint: ne.name,
-            id,
-            version,
-          });
-          line.processing_time = millis(line.processing_time);
-          line.average_processing_time = millis(line.average_processing_time);
-          stats.push(line);
+    (await collect(await mc.stats(opts.name, opts.id))).forEach((s) => {
+      const { name, id, version } = s;
+      s.endpoints?.forEach((ne) => {
+        const line = Object.assign(ne, {
+          name,
+          endpoint: ne.name,
+          id,
+          version,
         });
-      },
-    );
+        line.processing_time = millis(line.processing_time);
+        line.average_processing_time = millis(line.average_processing_time);
+        stats.push(line);
+      });
+    });
 
     stats.sort((a, b) => {
       return b.num_requests - a.num_requests;
@@ -125,11 +113,7 @@ root.addCommand({
 root.addCommand({
   use: "info [--name] [--id]",
   short: "get service info",
-  run: async (
-    cmd: Command,
-    _args: string[],
-    flags: Flags,
-  ): Promise<number> => {
+  run: async (cmd: Command, _args: string[], flags: Flags): Promise<number> => {
     const nc = await createConnection(flags);
     const mc = nc.services.client();
     const opts = options(flags);
@@ -139,7 +123,7 @@ root.addCommand({
         const A = `${a.name} ${a.version}`;
         const B = `${b.name} ${b.version}`;
         return B.localeCompare(A);
-      },
+      }
     );
     if (infos.length) {
       console.table(infos);
@@ -173,7 +157,7 @@ start.addCommand({
   run: async (
     _cmd: Command,
     _args: string[],
-    flags: Flags,
+    flags: Flags
   ): Promise<number> => {
     const d = deferred();
     const max = flags.value<number>("count");
@@ -197,19 +181,16 @@ start.addCommand({
   run: async (
     _cmd: Command,
     _args: string[],
-    flags: Flags,
+    flags: Flags
   ): Promise<number> => {
     const d = deferred();
     const max = flags.value<number>("count");
     for (let i = 0; i < max; i++) {
-      new Worker(
-        new URL("frequency-service.ts", import.meta.url).href,
-        {
-          type: "module",
-          //@ts-ignore: deno
-          deno: true,
-        },
-      );
+      new Worker(new URL("frequency-service.ts", import.meta.url).href, {
+        type: "module",
+        //@ts-ignore: deno
+        deno: true,
+      });
     }
 
     // wait forever
