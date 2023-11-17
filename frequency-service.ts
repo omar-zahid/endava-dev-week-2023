@@ -1,4 +1,4 @@
-import { connect, JSONCodec } from "./natslib.ts";
+import { connect, JSONCodec } from "nats";
 
 type Badge = {
   name: string;
@@ -6,7 +6,7 @@ type Badge = {
 };
 
 const jc = JSONCodec();
-const nc = await connect({ servers: "demo.nats.io" });
+const nc = await connect();
 
 const r: Record<string, number> = {};
 
@@ -53,5 +53,5 @@ service.stopped.then((err: Error | null) => {
 });
 
 console.log(
-  `${si.name} ${si.version} started with ID: ${si.id}`,
+  `${si.name} ${si.version} started with ID: ${si.id} on ${nc.getServer()}`
 );
