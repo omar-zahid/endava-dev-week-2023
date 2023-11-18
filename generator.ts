@@ -4,8 +4,7 @@ import fontkit from "@pdf-lib/fontkit";
 import { promises as fs } from "fs";
 import path from "path";
 
-let highResTemplate: Uint8Array;
-let lowResTemplate: Uint8Array;
+let template: Uint8Array;
 
 async function load(fileName: string): Promise<Uint8Array> {
   try {
@@ -18,17 +17,11 @@ async function load(fileName: string): Promise<Uint8Array> {
   }
 }
 
-async function getTemplate(highRes = false): Promise<Uint8Array> {
-  if (highRes) {
-    if (!highResTemplate) {
-      highResTemplate = await load(`badge.png`);
-    }
-    return highResTemplate;
+async function getTemplate(): Promise<Uint8Array> {
+  if (!template) {
+    template = await load(`badge.png`);
   }
-  if (!lowResTemplate) {
-    lowResTemplate = await load(`badge.png`);
-  }
-  return lowResTemplate;
+  return template;
 }
 
 const fontBytes = await load(`Inter-Bold.ttf`);
@@ -136,22 +129,17 @@ function _debugRectangle(
   page.drawRectangle(o);
 }
 
-export async function generateBadge(
-  args: { name: string; company?: string },
-  highres = false
-): Promise<Uint8Array> {
-  const template = await getTemplate(highres);
+export async function generateBadge(args: {
+  name: string;
+  company?: string;
+}): Promise<Uint8Array> {
+  const template = await getTemplate();
   let doc;
   let page;
-  if (highres) {
-    doc = await PDFDocument.load(template);
-    page = doc.getPage(0);
-  } else {
-    doc = await PDFDocument.create();
-    const png = await doc.embedPng(template);
-    page = doc.addPage([png.width, png.height]);
-    page.drawImage(png, { x: 0, y: 0, width: png.width, height: png.height });
-  }
+  doc = await PDFDocument.create();
+  const png = await doc.embedPng(template);
+  page = doc.addPage([png.width, png.height]);
+  page.drawImage(png, { x: 0, y: 0, width: png.width, height: png.height });
   doc.registerFontkit(fontkit);
   const font = await doc.embedFont(fontBytes);
   page.setFontColor(grayscale(1.0));
