@@ -24,6 +24,10 @@ To get the frequency of badge generation requests, send a request to the `freque
 
 Contributions are welcome. Please submit a pull request or create an issue to discuss the changes.
 
+## Acknowledgements
+
+Some of the code in this project was inspired by or referenced from the open source project at [https://github.com/aricart/services_demo](https://github.com/aricart/services_demo).
+
 ## License
 
 Refer to the `LICENSE` file for more information.
